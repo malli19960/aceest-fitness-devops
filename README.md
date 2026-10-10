@@ -101,14 +101,14 @@ container targets build successfully.
 Configure a Jenkins Pipeline or Multibranch Pipeline job to use this repository
 and the `Jenkinsfile`. Install the Jenkins Pipeline and GitHub plugins, then
 configure a GitHub webhook pointing to `https://<jenkins-host>/github-webhook/`
-for push events. The Jenkins agent must have Python 3.11, pip, and access to a
-Docker daemon. The pipeline uses Jenkins SCM checkout (no repository URL is
-hard-coded) and performs these stages:
+for push events. The Jenkins agent must have Docker installed and access to its
+daemon; Python and Pytest are provided by the Docker test image. Jenkins checks
+out the configured SCM repository (no repository URL is hard-coded) and
+performs these stages:
 
-1. Checkout source code
-2. Install development dependencies and compile the app and tests
-3. Run Pytest
-4. Build the test image, run its tests, and build the runtime image
+1. Build the test image, compiling the app and tests during the image build
+2. Run Pytest in the test container
+3. Build the runtime image
 
 This provides a second quality gate in a controlled Jenkins build environment.
 
