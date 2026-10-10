@@ -1,0 +1,39 @@
+name: ACEest CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Compile application and tests
+        run: python -m compileall -q app.py tests
+
+      - name: Build test image
+        run: docker build --target test -t aceest-fitness:test .
+
+      - name: Run tests inside container
+        run: docker run --rm aceest-fitness:test
+
+      - name: Build runtime image
+        run: docker build --target runtime -t aceest-fitness:latest .
