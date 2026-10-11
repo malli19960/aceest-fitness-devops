@@ -306,6 +306,11 @@ For automatic runs, enable **GitHub hook trigger
 for GITScm polling** and configure the repository webhook to point to
 `https://<jenkins-host>/github-webhook/`.
 
+The submission report embeds three fresh screenshots from Build #9: the
+successful build summary, the test stage showing 33 passing tests, and the
+final console output showing `Finished: SUCCESS`. The earlier Build #2
+permission-denied screenshot is retained as historical context.
+
 **Security note:** membership in the `docker` group effectively grants
 root-level control of the host. This VM change was performed by its
 administrator; use a dedicated Docker-capable agent instead where policy does
