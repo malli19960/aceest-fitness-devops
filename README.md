@@ -214,15 +214,12 @@ request. It performs the following steps:
 This ensures that code changes are validated before merging and that both
 container targets build successfully.
 
-The complete application and report were pushed to `main` in commit
-`4a79a34`. The push-triggered ACEest CI run completed successfully, including
-the containerized test suite and runtime image build:
+The initial complete-application push (commit `4a79a34`) passed in
 [GitHub Actions run 4](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38119817980).
-The follow-up run for commit `3c177ca` also passed:
-[GitHub Actions run 6](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38121172051).
-The documentation update in commit `4535322` triggered another successful
-build:
-[GitHub Actions run 7](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38122529890).
+A later workflow run, run 11, also passed
+compilation, containerized tests, and both image builds for report commit
+`e48076a`:
+[GitHub Actions run 11](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38124593209).
 
 ## Git Workflow
 
@@ -270,11 +267,15 @@ daemon; Python and Pytest are provided by the Docker test image. Jenkins checks
 out the configured SCM repository (no repository URL is hard-coded) and
 performs these stages:
 
-1. Build the test image, compiling the app and tests during the image build
+1. Build the test image, compiling the app and tests during the image build.
+   The Jenkins stage is named **Build and Lint**, but currently runs the Docker
+   test-image build only; it does not run a separate linter.
 2. Run Pytest in the test container
 3. Build the runtime image
 
 This provides a second quality gate in a controlled Jenkins build environment.
+The current pipeline builds and validates images; it does not deploy or leave
+the application running as a service.
 
 For a regular Pipeline job, select **Pipeline script from SCM**, choose **Git**,
 set the repository URL to
@@ -328,5 +329,5 @@ This project maps to the DevOps assignment requirements by implementing:
 - Automated code validation with pytest
 - Docker-based packaging
 - Jenkins build automation
-- GitHub Actions CI/CD pipeline
+- GitHub Actions CI pipeline
 - Documentation for setup and execution
