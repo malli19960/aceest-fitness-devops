@@ -181,23 +181,24 @@ docker build --target test -t aceest-fitness:test .
 docker run --rm aceest-fitness:test
 ```
 
-Build and launch the runtime image, then verify the service before stopping
-and removing the temporary container:
+Build and launch the runtime image on port 5000, then verify the service before
+stopping and removing the temporary container:
 
 ```bash
 docker build --target runtime -t aceest-fitness:latest .
-docker run -d --name aceest-fitness -p 5050:5000 aceest-fitness:latest
-curl http://127.0.0.1:5050/health
-curl "http://127.0.0.1:5050/api/plan?weight=70&height=175&age=30&gender=male&activity=moderate&goal=fat_loss"
-docker stop aceest-fitness
-docker rm aceest-fitness
+docker run -d --name aceest-fitness-runtime -p 5000:5000 aceest-fitness:latest
+curl http://127.0.0.1:5000/health
+curl "http://127.0.0.1:5000/api/plan?weight=70&height=175&age=30&gender=male&activity=moderate&goal=fat_loss"
+docker stop aceest-fitness-runtime
+docker rm aceest-fitness-runtime
 ```
 
 The assignment VM validation completed successfully: both image targets built,
 all 33 tests passed in the test container, and a temporary runtime container
-returned HTTP 200 from `/health` and `/api/plan`. The container was stopped
-and removed after the smoke check. Docker group membership grants effectively
-root-level host control; use only the VM's administrator-approved access.
+returned HTTP 200 from `/health` and `/api/plan` on port 5000. The container
+was stopped and removed after the smoke check. Docker group membership grants
+effectively root-level host control; use only the VM's administrator-approved
+access.
 
 ## GitHub Actions Workflow
 
