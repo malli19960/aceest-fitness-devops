@@ -169,20 +169,35 @@ On the Linux assignment VM, start Docker and verify the daemon before building:
 ```bash
 sudo systemctl start docker
 systemctl is-active docker
+id -nG
 ```
 
-Then build both targets and run the tests in the test image:
+The daemon check should print `active`. The interactive VM account must have
+Docker access (in this VM, it is a member of the `docker` group). From the
+repository directory, build the test image and run its tests:
 
 ```bash
 docker build --target test -t aceest-fitness:test .
 docker run --rm aceest-fitness:test
+```
+
+Build and launch the runtime image, then verify the service before stopping
+and removing the temporary container:
+
+```bash
 docker build --target runtime -t aceest-fitness:latest .
+docker run -d --name aceest-fitness -p 5050:5000 aceest-fitness:latest
+curl http://127.0.0.1:5050/health
+curl "http://127.0.0.1:5050/api/plan?weight=70&height=175&age=30&gender=male&activity=moderate&goal=fat_loss"
+docker stop aceest-fitness
+docker rm aceest-fitness
 ```
 
 The assignment VM validation completed successfully: both image targets built,
 all 33 tests passed in the test container, and a temporary runtime container
 returned HTTP 200 from `/health` and `/api/plan`. The container was stopped
-after the smoke check.
+and removed after the smoke check. Docker group membership grants effectively
+root-level host control; use only the VM's administrator-approved access.
 
 ## GitHub Actions Workflow
 
@@ -202,6 +217,8 @@ The complete application and report were pushed to `main` in commit
 `4a79a34`. The push-triggered ACEest CI run completed successfully, including
 the containerized test suite and runtime image build:
 [GitHub Actions run 4](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38119817980).
+The follow-up run for commit `3c177ca` also passed:
+[GitHub Actions run 6](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38121172051).
 
 ## Git Workflow
 
@@ -263,14 +280,26 @@ hook trigger for GITScm polling** when using the GitHub webhook.
 
 In the assignment VM, the Jenkins job successfully checked out `main` and
 started the pipeline, but its Docker build failed because the Jenkins service
-could not access `/var/run/docker.sock`. Starting Docker with
+could not access `/var/run/docker.sock`. To execute the job, sign in to the VM's
+Jenkins web interface, open **ACEest Fitness Gym-CI**, choose **Build Now**,
+then open the new build's **Console Output** to follow its checkout and
+pipeline stages. The `Jenkinsfile` runs **Build and Lint**, **Test**, and
+**Build Runtime Image** in that order. For automatic runs, enable **GitHub hook
+trigger for GITScm polling** and configure the repository webhook to point to
+`https://<jenkins-host>/github-webhook/`.
+
+Starting Docker with
 `sudo systemctl start docker` allows the interactive VM account to build and
 run containers; it does not grant the Jenkins service account access. The VM's
 Jenkins account is not in the `docker` group, so the test and runtime-image
 stages remain blocked. A Jenkins administrator can configure an approved
 Docker-capable agent or grant the service account Docker access according to
 local security policy; membership in the `docker` group effectively grants
-root-level control of the host.
+root-level control of the host. The recorded Jenkins Build #2 screenshot shows
+the socket permission failure and skipped stages; it is evidence of the
+current limitation, not a passing Jenkins run. The separate Docker VM
+screenshots show the successful manual image builds, test run, and runtime API
+checks. GitHub Actions validates the same Docker targets on pushes.
 
 ## Assignment Mapping
 
