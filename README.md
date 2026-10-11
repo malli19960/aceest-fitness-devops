@@ -178,6 +178,11 @@ request. It performs the following steps:
 This ensures that code changes are validated before merging and that both
 container targets build successfully.
 
+The complete application and report were pushed to `main` in commit
+`4a79a34`. The push-triggered ACEest CI run completed successfully, including
+the containerized test suite and runtime image build:
+[GitHub Actions run 4](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38119817980).
+
 ## Git Workflow
 
 Clone the repository and move into the project directory:
