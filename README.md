@@ -5,9 +5,11 @@ ACEest is a lightweight Flask-based fitness application designed for gym plannin
 ## Features
 
 - Fitness program recommendations
-- BMI estimation and workout planning
-- Daily calorie guidance
-- REST endpoints for health checks and program generation
+- Detailed weekly workout plans with exercises, sets, reps, rest times, and focus
+- Meal plans with estimated calories and protein
+- BMI estimation and goal-based calorie guidance
+- SQLite-backed client profiles, workout logs, and progress/adherence tracking
+- REST endpoints for health checks, programs, clients, workouts, and progress
 - Pytest test suite
 - Docker container support
 - GitHub Actions CI workflow
@@ -16,6 +18,7 @@ ACEest is a lightweight Flask-based fitness application designed for gym plannin
 ## Project Structure
 
 - `app.py` – Flask application
+- `Versions/` – standalone Flask snapshots showing features added over time
 - `requirements.txt` – Python dependencies
 - `tests/test_app.py` – Pytest test suite
 - `Dockerfile` – Container image definition
@@ -55,11 +58,89 @@ ACEest is a lightweight Flask-based fitness application designed for gym plannin
 
 ```bash
 python -m pytest -q
-python -m compileall -q app.py tests
+python -m compileall -q app.py tests Versions
 ```
 
 `requirements.txt` contains runtime dependencies. `requirements-dev.txt` adds
 Pytest for local and CI validation.
+
+## Progressive Flask Versions
+
+The standalone scripts in `Versions/` show the application's development in
+feature steps. `app.py` remains the main, fully tested application used by
+Docker, Jenkins, and GitHub Actions.
+
+| Version | Added features |
+| --- | --- |
+| `app_v1_0.py` | Initial Flask application and home endpoint. |
+| `app_v1_1.py` | Adds service health endpoint and location metadata. |
+| `app_v2_0.py` | Adds the fitness-program catalog endpoint. |
+| `app_v2_1.py` | Adds BMI, calorie guidance, program recommendation, and a basic weekly plan endpoint. |
+| `app_v3_0.py` | Adds the complete weekly plan and summary endpoints with validated inputs. |
+| `app_v3_1.py` | Expands each program with exercise sets/reps/rest, meal calories and protein, and detailed weekly schedules. |
+| `app_v4_0.py` | Adds SQLite-backed client profile create/read/update/delete routes, including BMI and calorie summaries. |
+| `app_v5_0.py` | Adds persistent workout logs and progress/adherence records to client profiles. This is the complete feature set used by `app.py`. |
+
+To run a snapshot from the project root, for example:
+
+```bash
+python Versions/app_v1_0.py
+```
+
+Stop that server before running another snapshot because they all use port 5000.
+The snapshots use the same installed Flask runtime dependency as the main app.
+The version 3.1 to 5.0 snapshots use the shared application implementation
+with features enabled to match each milestone.
+
+## API Features
+
+### Programs and plans
+
+- `GET /api/programs` returns four programs with weekly workout outlines,
+  exercise examples (sets, reps, rest and focus), meal suggestions, estimated
+  calories and protein, and program focus.
+- `GET /api/plan?goal=fat%20loss&height=175&weight=70&age=28` returns a BMI
+  estimate/category, estimated calorie target, recommended program and weekly
+  schedule.
+- `GET /api/summary` returns a compact client profile and recommendation.
+
+Nutrition and calorie numbers are general estimates, not medical advice.
+
+### Client management and tracking
+
+`POST /api/clients` creates a client profile. Required JSON fields are `name`,
+`age`, `height_cm`, `weight_kg`, and `goal`; `experience` is optional:
+
+```json
+{
+  "name": "Asha Kumar",
+  "age": 29,
+  "height_cm": 168,
+  "weight_kg": 64,
+  "goal": "fat loss",
+  "experience": "beginner"
+}
+```
+
+Other profile routes:
+
+- `GET /api/clients` lists profiles with calculated BMI and calorie targets.
+- `GET /api/clients/<id>` retrieves one profile.
+- `PUT /api/clients/<id>` updates profile fields using the same required fields.
+- `DELETE /api/clients/<id>` removes the profile and its associated tracking records.
+
+Log workouts with `POST /api/clients/<id>/workouts` using `workout_type` and
+positive `duration_min`; `workout_date` (`YYYY-MM-DD`) and `notes` are optional.
+Use `GET` on the same route to retrieve a client's workout history.
+
+Record weight and adherence with `POST /api/clients/<id>/progress` using
+`weight_kg` and `adherence_pct` (integer from 0 to 100); `notes` is optional.
+Use `GET /api/clients/<id>/progress` to retrieve progress history.
+
+Client, workout, and progress records are persisted to SQLite at
+`instance/aceest_fitness.db` by default. Tests can override the database path.
+When running in Docker, mount a volume at `/app/instance` if you need the
+records to survive container replacement.
 
 ## Docker Usage
 
@@ -89,12 +170,49 @@ The workflow in `.github/workflows/main.yml` runs on every push and pull
 request. It performs the following steps:
 
 1. Checks out the repository
-2. Installs Python development dependencies and compiles the app and tests
+2. Installs Python development dependencies and compiles the app, tests, and
+   version snapshots
 3. Builds the test image and runs Pytest inside that container
 4. Builds the production runtime image
 
 This ensures that code changes are validated before merging and that both
 container targets build successfully.
+
+## Git Workflow
+
+Clone the repository and move into the project directory:
+
+```bash
+git clone https://github.com/malli19960/aceest-fitness-devops.git
+cd aceest-fitness-devops
+```
+
+Before committing local changes, check the current branch and review what will
+be included:
+
+```bash
+git status
+git diff
+```
+
+Stage the intended application, test, CI, and documentation files, then commit
+and push them to `main`:
+
+```bash
+git add app.py tests Versions Dockerfile .dockerignore .gitignore \
+  requirements.txt requirements-dev.txt Jenkinsfile README.md \
+  .github/workflows/main.yml fitness_gui_demo.py filesummary.md \
+  execution_validation_report.html execution_evidence
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Add complete ACEest Fitness application and DevOps workflow"
+git push origin main
+```
+
+After pushing, verify the branch and commit on GitHub. GitHub Actions is
+configured to run on pushes and pull requests. Keep credentials, `.env` files,
+local databases, and generated caches out of commits; review the staged diff
+before committing.
 
 ## Jenkins Integration
 
@@ -111,6 +229,18 @@ performs these stages:
 3. Build the runtime image
 
 This provides a second quality gate in a controlled Jenkins build environment.
+
+For a regular Pipeline job, select **Pipeline script from SCM**, choose **Git**,
+set the repository URL to
+`https://github.com/malli19960/aceest-fitness-devops.git`, use branch
+specifier `*/main`, and set the script path to `Jenkinsfile`. Enable **GitHub
+hook trigger for GITScm polling** when using the GitHub webhook.
+
+In the assignment VM, the Jenkins job successfully checked out `main` and
+started the pipeline, but its Docker build failed because the Jenkins service
+could not access `/var/run/docker.sock`. The test and runtime-image stages were
+skipped. A Jenkins administrator must configure secure Docker access for the
+agent before the container stages can pass.
 
 ## Assignment Mapping
 

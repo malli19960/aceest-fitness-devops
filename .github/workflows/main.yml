@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Compile application and tests
-        run: python -m compileall -q app.py tests
+        run: python -m compileall -q app.py tests Versions
 
       - name: Build test image
         run: docker build --target test -t aceest-fitness:test .

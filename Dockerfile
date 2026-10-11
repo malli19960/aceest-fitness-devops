@@ -14,12 +14,15 @@ COPY requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY app.py ./
 COPY tests/ ./tests/
-RUN python -m compileall -q app.py tests
+COPY Versions/ ./Versions/
+RUN python -m compileall -q app.py tests Versions
 CMD ["python", "-m", "pytest", "-q"]
 
 FROM base AS runtime
 
-RUN useradd --create-home --uid 10001 appuser
+RUN useradd --create-home --uid 10001 appuser && \
+    mkdir -p /app/instance && \
+    chown appuser:appuser /app/instance
 COPY --chown=appuser:appuser app.py ./
 USER appuser
 
