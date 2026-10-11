@@ -219,6 +219,9 @@ the containerized test suite and runtime image build:
 [GitHub Actions run 4](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38119817980).
 The follow-up run for commit `3c177ca` also passed:
 [GitHub Actions run 6](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38121172051).
+The documentation update in commit `4535322` triggered another successful
+build:
+[GitHub Actions run 7](https://github.com/malli19960/aceest-fitness-devops/actions/runs/38122529890).
 
 ## Git Workflow
 
