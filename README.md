@@ -164,6 +164,26 @@ docker build --target test -t aceest-fitness:test .
 docker run --rm aceest-fitness:test
 ```
 
+On the Linux assignment VM, start Docker and verify the daemon before building:
+
+```bash
+sudo systemctl start docker
+systemctl is-active docker
+```
+
+Then build both targets and run the tests in the test image:
+
+```bash
+docker build --target test -t aceest-fitness:test .
+docker run --rm aceest-fitness:test
+docker build --target runtime -t aceest-fitness:latest .
+```
+
+The assignment VM validation completed successfully: both image targets built,
+all 33 tests passed in the test container, and a temporary runtime container
+returned HTTP 200 from `/health` and `/api/plan`. The container was stopped
+after the smoke check.
+
 ## GitHub Actions Workflow
 
 The workflow in `.github/workflows/main.yml` runs on every push and pull
@@ -243,9 +263,14 @@ hook trigger for GITScm polling** when using the GitHub webhook.
 
 In the assignment VM, the Jenkins job successfully checked out `main` and
 started the pipeline, but its Docker build failed because the Jenkins service
-could not access `/var/run/docker.sock`. The test and runtime-image stages were
-skipped. A Jenkins administrator must configure secure Docker access for the
-agent before the container stages can pass.
+could not access `/var/run/docker.sock`. Starting Docker with
+`sudo systemctl start docker` allows the interactive VM account to build and
+run containers; it does not grant the Jenkins service account access. The VM's
+Jenkins account is not in the `docker` group, so the test and runtime-image
+stages remain blocked. A Jenkins administrator can configure an approved
+Docker-capable agent or grant the service account Docker access according to
+local security policy; membership in the `docker` group effectively grants
+root-level control of the host.
 
 ## Assignment Mapping
 
