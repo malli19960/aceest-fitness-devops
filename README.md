@@ -282,28 +282,38 @@ set the repository URL to
 specifier `*/main`, and set the script path to `Jenkinsfile`. Enable **GitHub
 hook trigger for GITScm polling** when using the GitHub webhook.
 
-In the assignment VM, the Jenkins job successfully checked out `main` and
-started the pipeline, but its Docker build failed because the Jenkins service
-could not access `/var/run/docker.sock`. To execute the job, sign in to the VM's
-Jenkins web interface, open **ACEest Fitness Gym-CI**, choose **Build Now**,
-then open the new build's **Console Output** to follow its checkout and
-pipeline stages. The `Jenkinsfile` runs **Build and Lint**, **Test**, and
-**Build Runtime Image** in that order. For automatic runs, enable **GitHub hook
-trigger for GITScm polling** and configure the repository webhook to point to
+In the assignment VM, the first Jenkins pipeline attempts failed because the
+Jenkins service account could not access `/var/run/docker.sock`, even though
+the interactive VM user could. An administrator added `jenkins` to the
+`docker` group and restarted Jenkins so the service acquired the supplementary
+group membership. The resulting checks confirmed `id jenkins` included
+`docker`, and `sudo -u jenkins docker info` successfully reported Docker Engine
+27.5.1. For an administrator-approved setup, the corresponding commands are:
+
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+id jenkins
+sudo -u jenkins docker info --format '{{.ServerVersion}}'
+```
+
+To execute the job, sign in to the VM's Jenkins web interface, open
+**ACEest Fitness Gym-CI**, choose **Build Now**, then open the new build's
+**Console Output**. The `Jenkinsfile` runs **Build and Lint**, **Test**, and
+**Build Runtime Image** in that order. Build #9 completed with **SUCCESS**,
+with all 33 tests passing in the Test stage; [view its Console Output in the VM](http://localhost:8080/job/ACEest%20Fitness%20Gym-%20CI/9/console).
+For automatic runs, enable **GitHub hook trigger
+for GITScm polling** and configure the repository webhook to point to
 `https://<jenkins-host>/github-webhook/`.
 
-Starting Docker with
-`sudo systemctl start docker` allows the interactive VM account to build and
-run containers; it does not grant the Jenkins service account access. The VM's
-Jenkins account is not in the `docker` group, so the test and runtime-image
-stages remain blocked. A Jenkins administrator can configure an approved
-Docker-capable agent or grant the service account Docker access according to
-local security policy; membership in the `docker` group effectively grants
-root-level control of the host. The recorded Jenkins Build #2 screenshot shows
-the socket permission failure and skipped stages; it is evidence of the
-current limitation, not a passing Jenkins run. The separate Docker VM
-screenshots show the successful manual image builds, test run, and runtime API
-checks. GitHub Actions validates the same Docker targets on pushes.
+**Security note:** membership in the `docker` group effectively grants
+root-level control of the host. This VM change was performed by its
+administrator; use a dedicated Docker-capable agent instead where policy does
+not permit Docker access for the Jenkins service. The Jenkins Build #2
+screenshot in the report is historical evidence of the original permission
+failure; Build #9 is the later successful run. The Docker VM screenshots show
+the manual image builds, test run, and runtime API checks. GitHub Actions also
+validates the Docker targets on pushes.
 
 ## Assignment Mapping
 
