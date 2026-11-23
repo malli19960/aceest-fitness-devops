@@ -4,6 +4,7 @@ __pycache__/
 *.pyd
 .git/
 .venv/
+.scannerwork/
 .pytest_cache/
 .github/
 Olderfiles/

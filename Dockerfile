@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY app.py ./
 COPY tests/ ./tests/
 COPY Versions/ ./Versions/
+COPY k8s/ ./k8s/
 RUN python -m compileall -q app.py tests Versions
 CMD ["python", "-m", "pytest", "-q"]
 

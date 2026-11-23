@@ -44,7 +44,7 @@ to prepare the project for the DevOps submission.
 
 ## Validation notes
 
-- `python -m pytest -q`: 33 tests passed during the implementation.
+- `python -m pytest -q`: 36 tests passed during the implementation.
 - `python -m compileall -q app.py tests Versions`: passed.
 - Docker was not installed in the local workspace, so Docker image builds were
   not run locally. GitHub Actions and a configured Jenkins agent can run those

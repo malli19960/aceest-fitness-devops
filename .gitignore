@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+.scannerwork/
 .DS_Store
 Olderfiles/
 *.db

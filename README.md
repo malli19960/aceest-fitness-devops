@@ -23,7 +23,13 @@ ACEest is a lightweight Flask-based fitness application designed for gym plannin
 - `tests/test_app.py` – Pytest test suite
 - `Dockerfile` – Container image definition
 - `.github/workflows/main.yml` – GitHub Actions pipeline
-- `Jenkinsfile` – Jenkins pipeline configuration
+- `Jenkinsfile` – Jenkins build, test, quality-gate, image-publishing, and deployment pipeline
+- `sonar-project.properties` – SonarQube project configuration
+- `k8s/` – Kubernetes manifests for rolling, blue-green, and canary deployments
+- `ASSIGNMENT-2-REPORT.md` – 2–3-page Assignment 2 architecture and execution summary
+- `2025TM93179_ACEest_Fitness_Assignment-2_Execution_and_Validation_Report.pdf` –
+  personalized Assignment 2 execution and validation report
+- `generate_assignment2_report.py` – regenerates the PDF from the project evidence
 
 ## Local Setup
 
@@ -194,7 +200,7 @@ docker rm aceest-fitness-runtime
 ```
 
 The assignment VM validation completed successfully: both image targets built,
-all 33 tests passed in the test container, and a temporary runtime container
+all 36 tests passed in the test container, and a temporary runtime container
 returned HTTP 200 from `/health` and `/api/plan` on port 5000. The container
 was stopped and removed after the smoke check. Docker group membership grants
 effectively root-level host control; use only the VM's administrator-approved
@@ -244,11 +250,12 @@ and push them to `main`:
 ```bash
 git add app.py tests Versions Dockerfile .dockerignore .gitignore \
   requirements.txt requirements-dev.txt Jenkinsfile README.md \
+  ASSIGNMENT-2-REPORT.md sonar-project.properties k8s \
   .github/workflows/main.yml fitness_gui_demo.py filesummary.md \
   execution_validation_report.html execution_evidence
 git diff --cached --check
 git diff --cached --stat
-git commit -m "Add complete ACEest Fitness application and DevOps workflow"
+git commit -m "Add Assignment 2 CI/CD deployment pipeline"
 git push origin main
 ```
 
@@ -257,31 +264,49 @@ configured to run on pushes and pull requests. Keep credentials, `.env` files,
 local databases, and generated caches out of commits; review the staged diff
 before committing.
 
-## Jenkins Integration
+## Jenkins, SonarQube, and Docker Hub
 
-Configure a Jenkins Pipeline or Multibranch Pipeline job to use this repository
-and the `Jenkinsfile`. Install the Jenkins Pipeline and GitHub plugins, then
-configure a GitHub webhook pointing to `https://<jenkins-host>/github-webhook/`
-for push events. The Jenkins agent must have Docker installed and access to its
-daemon; Python and Pytest are provided by the Docker test image. Jenkins checks
-out the configured SCM repository (no repository URL is hard-coded) and
-performs these stages:
+Use a Jenkins **Multibranch Pipeline** job for this repository so branch
+conditions in the `Jenkinsfile` work as intended. Install the Pipeline,
+GitHub, SonarQube Scanner, and Credentials plugins. The Jenkins agent needs
+Docker access, the SonarScanner CLI configured under the tool name
+`SonarScanner`, and network access to the configured SonarQube server.
 
-1. Build the test image, compiling the app and tests during the image build.
-   The Jenkins stage is named **Build and Lint**, but currently runs the Docker
-   test-image build only; it does not run a separate linter.
-2. Run Pytest in the test container
-3. Build the runtime image
+Configure these Jenkins items before running a deployment:
 
-This provides a second quality gate in a controlled Jenkins build environment.
-The current pipeline builds and validates images; it does not deploy or leave
-the application running as a service.
+1. Add a username/password credential with ID `dockerhub-credentials`. Use a
+   Docker Hub access token as the password and make the target
+   `aceest-fitness` repository public, or configure an image-pull secret in the
+   cluster if the repository is private.
+2. Add the cluster kubeconfig as a **Secret file** credential with ID
+   `kubeconfig`. Scope its Kubernetes identity to only the resources the
+   deployment needs.
+3. Configure the SonarQube server name as `SonarQube` and the scanner tool as
+   `SonarScanner`. Configure the SonarQube webhook to call
+   `https://<jenkins-host>/sonarqube-webhook/`; the Quality Gate stage waits
+   up to five minutes and fails the pipeline if the gate fails or times out.
+4. Configure the GitHub webhook to call
+   `https://<jenkins-host>/github-webhook/` for push events.
 
-For a regular Pipeline job, select **Pipeline script from SCM**, choose **Git**,
-set the repository URL to
-`https://github.com/malli19960/aceest-fitness-devops.git`, use branch
-specifier `*/main`, and set the script path to `Jenkinsfile`. Enable **GitHub
-hook trigger for GITScm polling** when using the GitHub webhook.
+The pipeline runs containerized Pytest, SonarQube analysis, and quality-gate
+validation before it builds and pushes a uniquely versioned Docker Hub image.
+Only `main` builds publish and deploy. Select the Kubernetes strategy through
+the Jenkins build parameter `DEPLOYMENT_STRATEGY`:
+
+- `rolling` applies the rolling-update Deployment and waits for readiness; an
+  unsuccessful rollout triggers `kubectl rollout undo`.
+- `blue-green` starts the inactive color, waits for it to become ready, then
+  switches the Service selector. If the new color fails readiness, the existing
+  Service continues sending traffic to the old color.
+- `canary` adds one canary pod alongside two stable pods for a readiness
+  check, then promotes the image to the stable Deployment. The Service's
+  connection distribution is approximate, not a guaranteed traffic percentage.
+
+The first Deployment of each strategy initializes the required Service and
+Deployment resources. The strategies use separate Services so all three can
+run side by side without one selector routing traffic to the wrong pods. The
+Jenkins agent must have a working `kubectl` context for the supplied kubeconfig
+and permission to manage Deployments and Services in the target namespace.
 
 In the assignment VM, the first Jenkins pipeline attempts failed because the
 Jenkins service account could not access `/var/run/docker.sock`, even though
@@ -298,28 +323,53 @@ id jenkins
 sudo -u jenkins docker info --format '{{.ServerVersion}}'
 ```
 
-To execute the job, sign in to the VM's Jenkins web interface, open
-**ACEest Fitness Gym-CI**, choose **Build Now**, then open the new build's
-**Console Output**. The `Jenkinsfile` runs **Build and Lint**, **Test**, and
-**Build Runtime Image** in that order. Build #9 completed with **SUCCESS**,
-with all 33 tests passing in the Test stage; [view its Console Output in the VM](http://localhost:8080/job/ACEest%20Fitness%20Gym-%20CI/9/console).
-For automatic runs, enable **GitHub hook trigger
-for GITScm polling** and configure the repository webhook to point to
-`https://<jenkins-host>/github-webhook/`.
-
-The submission report embeds three fresh screenshots from Build #9: the
-successful build summary, the test stage showing 33 passing tests, and the
-final console output showing `Finished: SUCCESS`. The earlier Build #2
-permission-denied screenshot is retained as historical context.
+The existing Build #9 and its screenshots are Assignment 1 evidence only:
+they predate the current `Jenkinsfile` and do not demonstrate SonarQube,
+Docker Hub publishing, or Kubernetes deployment. After configuring the
+Multibranch Pipeline and credentials above, run a new `main` build, choose a
+`DEPLOYMENT_STRATEGY`, and capture that build's console output and results for
+Assignment 2.
 
 **Security note:** membership in the `docker` group effectively grants
 root-level control of the host. This VM change was performed by its
 administrator; use a dedicated Docker-capable agent instead where policy does
 not permit Docker access for the Jenkins service. The Jenkins Build #2
-screenshot in the report is historical evidence of the original permission
-failure; Build #9 is the later successful run. The Docker VM screenshots show
-the manual image builds, test run, and runtime API checks. GitHub Actions also
-validates the Docker targets on pushes.
+screenshot in the Assignment 1 report is historical evidence of the original
+permission failure; Build #9 is the later successful run. The Docker VM
+screenshots show the manual image builds, test run, and runtime API checks.
+GitHub Actions also validates the Docker targets on pushes.
+
+## Assignment 2: Kubernetes Deployment
+
+The manifests in `k8s/rolling/`, `k8s/blue-green/`, and `k8s/canary/` use
+readiness and liveness probes on `/health`, resource requests and limits, and
+non-privileged container security settings. They create a NodePort Service.
+After a successful deployment, check the selected strategy's Service:
+
+```bash
+kubectl get deployments,pods,services
+kubectl get service aceest-fitness-rolling
+kubectl get service aceest-fitness-blue-green
+kubectl get service aceest-fitness-canary
+```
+
+For Minikube, obtain a reachable URL with:
+
+```bash
+minikube service aceest-fitness-rolling --url
+minikube service aceest-fitness-blue-green --url
+minikube service aceest-fitness-canary --url
+```
+
+Use each returned address to test `/health`, and save the URLs and successful
+Jenkins, Kubernetes, and SonarQube results for the submission. A Minikube URL
+may only be reachable from the VM that runs the cluster.
+
+The application currently stores client and workout data in a local SQLite
+file. These demo manifests do not provide shared persistent storage, so data
+can be lost on pod replacement and can differ between replicas. Do not use
+these manifests for real client data; a production deployment should first
+migrate persistence to a managed database such as PostgreSQL.
 
 ## Assignment Mapping
 
@@ -329,5 +379,7 @@ This project maps to the DevOps assignment requirements by implementing:
 - Automated code validation with pytest
 - Docker-based packaging
 - Jenkins build automation
+- SonarQube quality-gate integration and Docker Hub image publishing
+- Kubernetes rolling, blue-green, and canary deployment configurations
 - GitHub Actions CI pipeline
 - Documentation for setup and execution
