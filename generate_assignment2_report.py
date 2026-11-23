@@ -17,7 +17,7 @@ from reportlab.platypus import (
 
 
 ROOT = Path(__file__).resolve().parent
-OUTPUT = ROOT / "2025TM93179_ACEest_Fitness_Assignment-2_Execution_and_Validation_Report_UPDATED.pdf"
+OUTPUT = ROOT / "2025TM93179_ACEest_Fitness_Assignment-2_Execution_and_Validation_Report.pdf"
 
 BLUE = colors.HexColor("#184a78")
 GREEN = colors.HexColor("#137547")
@@ -183,7 +183,11 @@ story += [
     p("<b>Student ID:</b> 2025TM93179", "SubtitleCustom"),
     p("<b>Project:</b> malli19960/aceest-fitness-devops", "SubtitleCustom"),
     p("<b>Report date:</b> 23 November 2026", "SubtitleCustom"),
-    p("<b>Repository:</b> https://github.com/malli19960/aceest-fitness-devops", "SubtitleCustom"),
+    p(
+        '<b>GitHub repository:</b> <link href="https://github.com/malli19960/aceest-fitness-devops" '
+        'color="#184a78"><u>https://github.com/malli19960/aceest-fitness-devops</u></link>',
+        "SubtitleCustom",
+    ),
     PageBreak(),
 ]
 
